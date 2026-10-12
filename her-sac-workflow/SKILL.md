@@ -41,16 +41,27 @@ provides the log file.
 calculated.
 
 **4. Build inputs.** `python scripts/build_poscar.py candidates.csv --template assets/POSCAR_template --sites assets/sites.json --only <names>`
-(element substitution on the project template, see `references/screening.md`), then assemble INCAR, KPOINTS and POTCAR from `references/vasp_settings.md`. Job set per candidate: bare `*`,
+(element substitution on the project template, see `references/screening.md`), then copy the INCAR from `references/vasp_settings.md` and generate KPOINTS + POTCAR with
+`echo -e "102\n1\n0.03" | vaspkit` (check POSCAR/POTCAR element order). Job set per candidate: bare `*`,
 `H*` (metal and ligand sites), `2H*` in both Tafel configurations, frequency jobs. Relaxations fix no atoms;
 only frequency (ZPE/TS) jobs fix the substrate (`scripts/make_freq_poscar.py`). Details in `references/dft_her.md`.
 
 **5. Submit.** Submit to the HPC scheduler (Gadi: PBS; Setonix: SLURM). Ask the user before the first
-submission of a session. Record every job ID in `loop_state.json`.
+submission of a session. Submit with `qsub sub.sh > JOBID` (SLURM: `sbatch --parsable sub.sh > JOBID`) so each
+folder keeps its own ID, and record every job ID in `loop_state.json`. Then set up the 5-hourly check (step 6).
 
-**6. Track and handle failures.** Poll job status. For a failed job, read only the relevant part of the output
-(the tail of OUTCAR/OSZICAR and the scheduler error file, not whole files), diagnose, change one setting,
-resubmit. After 3 failed retries, mark it `flagged` and tell the user. Log every action in `workflow_log.md`.
+**6. Check every 5 h and fix failures automatically.** While a cycle has jobs out, check them every 5 hours:
+schedule a recurring check with whatever scheduler this agent has (e.g. `/loop 5h`, a cron task or a
+Routine) and cancel it once every job of the cycle is `converged` or `flagged`. Each check runs
+`python scripts/check_jobs.py <job dirs> --json job_status.json` and acts on the result:
+- `converged` → mark `done` in `loop_state.json`; start the next job that depends on it (e.g. frequency job).
+- `running` → still queued or computing; leave it.
+- `failed` → fix it without asking the user, following `references/dft_her.md` §6 (one change, backup,
+  resubmit), then record the new job ID.
+- `unconverged` → NSW reached or walltime: `cp CONTCAR POSCAR` and resubmit; otherwise read the log tail.
+- `unknown` → report to the user.
+After 3 failed retries of one job, mark it `flagged` and tell the user. Log every check and action in
+`workflow_log.md`, and give the user a one-line summary per check (counts of converged/running/failed/fixed).
 
 **7. Process results.** For each finished candidate, run the checks in `references/dft_her.md` §6, then:
 - free energies, VH/VT mechanism and limiting potential: `python scripts/her_analysis.py energies.csv --plot`
@@ -69,6 +80,7 @@ and report the cycle summary.
 - `references/vasp_settings.md`: INCAR/KPOINTS settings, reference energies, HPC details.
 - `scripts/parse_candidates.py`: screening log → `candidates.csv`.
 - `scripts/build_poscar.py`: candidates → POSCARs from the template and site map.
+- `scripts/check_jobs.py`: job folders → converged / running / failed (error + fix) / unconverged.
 - `scripts/make_freq_poscar.py`: relaxed CONTCAR → frequency POSCAR (substrate fixed, H free).
 - `assets/POSCAR_template`, `assets/sites.json`: TMX4@G template structure and metal/ligand atom indices.
 - `scripts/her_analysis.py`: ΔG_H*, ΔG_2H* (C and metal "horns" configurations), η_VH, η_VT, pathway, diagrams.

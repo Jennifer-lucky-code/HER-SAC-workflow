@@ -25,6 +25,15 @@ def symbol(z):
     return SYMBOLS[z - 1]
 
 
+# C2v of the X1 X2 / X3 X4 site rectangle (see references/screening.md): identity, C2, two mirrors.
+C2V = ((0, 1, 2, 3), (3, 2, 1, 0), (1, 0, 3, 2), (2, 3, 0, 1))
+
+
+def canonical(label):
+    """Symmetry-equivalent ligand strings map to one key (lexicographic minimum over C2v)."""
+    return min("".join(label[i] for i in perm) for perm in C2V)
+
+
 RE_CONF = re.compile(r"配置\s*(\d+)\s*[:：]")
 RE_ZL = re.compile(r"Z\s*=\s*(\d+)\s*,\s*配体\s*=\s*\[([^\]]+)\]\s*(?:\(\s*([A-Za-z]+)\s*\))?")
 RE_DG = re.compile(r"ΔG\s*=\s*([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)\s*±\s*(\d*\.?\d+(?:[eE][-+]?\d+)?)")
@@ -48,6 +57,7 @@ def parse(text):
             label = "".join(symbol(x) for x in lig)
             cur.update(Z=z, metal=symbol(z), ligands=" ".join(map(str, lig)),
                        label=label, name=f"{symbol(z)}-{label}@G",
+                       canonical=f"{symbol(z)}-{canonical(label)}@G" if len(lig) == 4 else "",
                        label_check="ok" if (m.group(3) or label) == label else f"MISMATCH log={m.group(3)}")
             continue
         m = RE_DG.search(s)
@@ -62,6 +72,8 @@ def parse(text):
         r.setdefault("sigma", "")
         if "Z" not in r:
             r["label_check"] = "INCOMPLETE block"
+        elif r["dG"] == "":
+            r["label_check"] = ("MISSING dG; " + r["label_check"]) if r["label_check"] != "ok" else "MISSING dG"
     return rows
 
 
@@ -71,7 +83,7 @@ def main():
     p.add_argument("-o", "--out", default="candidates.csv")
     a = p.parse_args()
     rows = parse(open(a.log, encoding="utf-8").read())
-    fields = ["section", "config_id", "name", "Z", "metal", "ligands", "label", "dG", "sigma", "label_check"]
+    fields = ["section", "config_id", "name", "canonical", "Z", "metal", "ligands", "label", "dG", "sigma", "label_check"]
     with open(a.out, "w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=fields, extrasaction="ignore")
         w.writeheader()

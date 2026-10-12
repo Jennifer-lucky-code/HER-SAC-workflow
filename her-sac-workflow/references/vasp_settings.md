@@ -10,7 +10,7 @@ until then, ask the user rather than guessing.
 | Code | VASP 5.4.4, PAW, GGA-PBE |
 | Spin | ISPIN = 2 (spin-polarised) |
 | ENCUT | 500 eV |
-| k-points | 4 × 4 × 1 (see KPOINTS note below) |
+| k-points | Monkhorst-Pack, from VASPKIT k-spacing 0.03 (gives 4 × 4 × 1 for the template cell; see KPOINTS below) |
 | EDIFF (relaxation) | 1E-5 |
 | EDIFF (static) | 1E-6 |
 | EDIFFG | -0.01 (forces < 0.01 eV/Å) |
@@ -18,10 +18,10 @@ until then, ask the user rather than guessing.
 | Vacuum | 15 Å (user-stated; not yet written in the manuscript) |
 | Supercell size | TODO |
 | vdW correction | DFT-D3 (IVDW = 11, zero damping) |
-| Dipole correction (LDIPOL/IDIPOL) | TODO |
+| Dipole correction (LDIPOL/IDIPOL) | not used (not in the project INCAR) |
 | Initial MAGMOM | not set in template (VASP default 1 μB per atom); set explicitly if spin states matter |
-| POTCAR | generated with VASPKIT (its recommended PAW_PBE set) |
-| Solvation (VASPsol) | TODO: used or not |
+| POTCAR | generated with VASPKIT together with KPOINTS (its recommended PAW_PBE set; see KPOINTS below) |
+| Solvation (VASPsol) | not used (not in the project INCAR) |
 
 ## Relaxation INCAR (project template)
 
@@ -81,9 +81,18 @@ Monkhorst-Pack
 0.0  0.0  0.0
 ```
 
-Note: the manuscript methods say "Γ-centred Monkhorst–Pack 4 × 4 × 1", but this file uses a plain
-Monkhorst-Pack grid, which for an even mesh is not Γ-centred. Confirm with the user which one the production
-runs used before generating new jobs, and keep new jobs identical to the existing dataset.
+Production runs use a plain Monkhorst-Pack grid (confirmed by the user). The manuscript methods say
+"Γ-centred Monkhorst–Pack"; that wording is wrong for the actual runs, keep new jobs Monkhorst-Pack.
+
+Generate KPOINTS and POTCAR in every job folder (after the final POSCAR is in place) with:
+
+```bash
+echo -e "102\n1\n0.03" | vaspkit
+```
+
+(102 = KPOINTS + POTCAR from k-spacing, 1 = Monkhorst-Pack, 0.03 = k-spacing. Plain numbers, no prefix.)
+Then check POSCAR–POTCAR consistency: the element order on POSCAR line 6 must match the order of the
+`TITEL` lines in POTCAR. If it does not, report it to the user; do not submit.
 
 ## Frequency INCAR (project template)
 
@@ -127,13 +136,34 @@ NSW    = 1
 LORBIT = 12
 ```
 
-ZPE and TS from the real modes via VASPKIT (TODO: record the exact VASPKIT option used).
+ZPE and TS at 298.15 K, run inside the finished frequency folder:
+
+```bash
+printf "501\n298.15\n" | vaspkit | grep -E "Zero-point energy E_ZPE|Entropy contribution T\*S"
+```
+
+```text
+Zero-point energy E_ZPE   :      13.814 kcal/mol    0.599026 eV
+Entropy contribution T*S  :   15147.343 J/(mol)     0.156991 eV
+```
+
+ZPE and TS are the second-to-last column (eV) of these two lines. G = E + ZPE − TS for every adsorbed
+state, with E from the matching relaxation (below).
+
+## Convergence and energies
+
+- A relaxation counts as converged only if the last or second-to-last line of the job log (`log`, from the
+  job script below) contains `reached required accuracy - stopping structural energy minimisation`.
+  Do not use its CONTCAR for frequency jobs or results otherwise.
+- E (E_DFT) = the `E0` value on the last line of that job's `OSZICAR`.
+- Whenever MAGMOM is set explicitly, its total count must equal the POSCAR atom count (lines 6–7),
+  otherwise VASP stops.
 
 ## Reference energies
 
 | Quantity | Value (eV) | Note |
 | --- | --- | --- |
-| G_H₂ | -6.8901 | From the project spreadsheet (H2+surface − surface). TODO confirm whether this includes ZPE and TS. |
+| G_H₂ | -6.8901 | From the project spreadsheet (H2+surface − surface). G = E + ZPE − TS, same as every other step (confirmed by the user). |
 | E_TM (bulk, per atom) | TODO | One value per metal |
 
 ## AIMD (shortlisted candidates)

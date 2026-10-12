@@ -60,7 +60,8 @@ def analyse(E_slab, G_H, G_2H_C, G_2H_M, G_H2):
 
 
 def _f(x):
-    return "" if x is None or x == "" else float(x)
+    x = "" if x is None else x.strip()
+    return "" if x == "" else float(x)
 
 
 def plot(rows, path="her_diagrams.png"):
@@ -121,6 +122,8 @@ def main():
                          **{k: raw[k] for k in ("H_site", "H2_site", "Ef") if k in raw},
                          **res})
 
+    if not rows:
+        raise SystemExit(f"No data rows in {a.csv}")
     fields = list(rows[0].keys())
     with open(a.out, "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=fields)

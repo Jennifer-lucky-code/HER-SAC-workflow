@@ -32,7 +32,8 @@ Make the frequency POSCAR from the relaxed CONTCAR with `python scripts/make_fre
 
 
 - Run a frequency job for every adsorbed state, with only the H atoms free and the slab fixed.
-- G = E_DFT + E_ZPE − TS, T = 298.15 K. The bare slab uses G_* = E_*.
+- G = E_DFT + E_ZPE − TS, T = 298.15 K (ZPE/TS via VASPKIT 501, E_DFT = OSZICAR `E0`; commands in
+  `references/vasp_settings.md`). The bare slab uses G_* = E_*.
 - G_H₂ for gas-phase H₂: use the project reference value in `references/vasp_settings.md`; never mix references
   from different setups.
 - Imaginary modes on H: report them; the structure may not be a minimum.
@@ -42,14 +43,27 @@ Make the frequency POSCAR from the relaxed CONTCAR with `python scripts/make_fre
 A job passes only if all hold:
 
 - Electronic SCF converged in every ionic step, and the final ionic step reached EDIFFG (forces < 0.01 eV/Å).
+  The job log must end with `reached required accuracy - stopping structural energy minimisation`
+  (last or second-to-last line).
 - No error messages in the output or scheduler log; the job finished normally.
 - H stayed bound: metal–H or ligand–H distance within a sensible bonding range; no H drifted into vacuum.
 - Final magnetic moment recorded; note large changes between `*`, `H*` and `2H*`.
 - Structure integrity: TM still four-coordinated, no large out-of-plane distortion. Flag symmetry breaking
   (Jahn–Teller-like distortion) in the log rather than discarding the job.
 
-Failed jobs: diagnose from the error text, fix one setting at a time, resubmit. After 3 failed retries, stop and
-flag the job for the user. Log every action (what failed, what was changed) in `workflow_log.md`.
+Failed jobs are fixed automatically (no need to ask the user), found by the 5-hourly `scripts/check_jobs.py` run:
+
+1. Back up before changing anything: `log` → `log-N`, `INCAR` → `INCAR-N` (N = retry number).
+2. Apply the one fix the script names for the error (its table covers walltime, memory, POTCAR, MAGMOM,
+   ZBRENT, BRIONS, LREAL, symmetry, eigensolver, BRMIX, NBANDS, crashes). For a relaxation that had made
+   progress, `cp CONTCAR POSCAR` first so the restart keeps it.
+3. Never change anything that shifts the energy reference to make a job run: ENCUT, PREC, IVDW, ISPIN,
+   POTCAR set, k-spacing, cell. If the only fix would need that, flag the job instead.
+4. Resubmit, write the new JOBID, add the retry to `loop_state.json`.
+5. After 3 failed retries of the same job, stop and flag it for the user with the errors seen.
+
+Log every action (what failed, what was changed, new job ID) in `workflow_log.md`, and keep the changed
+setting in the dataset row's notes so it is clear which jobs deviate from the template INCAR.
 
 ## 7. Free energies, mechanism and overpotential
 
