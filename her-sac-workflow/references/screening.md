@@ -28,14 +28,17 @@ Top 10 最优配置 (ΔG ≈ 0)
 - Label in brackets = ligand symbols in the same order; name the configuration `Ru-PONS@G`.
 - `ΔG = value ± σ` = predicted value and its uncertainty.
 
-`python scripts/parse_candidates.py <log>` turns the log into `candidates.csv` (section, config ID, name, Z,
-ligands, ΔG, σ). It flags blocks where the bracket label does not match the ligand numbers, and blocks with a
+`python scripts/parse_candidates.py <log>` turns the log into `candidates.csv` (section, config ID, name,
+canonical, Z, ligands, ΔG, σ). `canonical` is the symmetry key: the lexicographically smallest ligand string
+over the four C2v operations of the site rectangle (e.g. `Ru-PONS@G` and `Ru-SNOP@G` both → `Ru-NSPO@G`;
+Ir-CCNS, Cr-PSSS and Y-OPPS are already canonical). It flags blocks where the bracket label does not match the ligand numbers, and blocks with a
 missing ΔG line; report those to the user instead of guessing.
 
 ## Choosing what to run
 
 Show the parsed table to the user and ask which candidates to run this cycle. Skip any configuration that is
-already in the dataset or already has a job folder.
+already in the dataset or already has a job folder; compare by the `canonical` column, not by `name`,
+so symmetry-equivalent orderings are caught.
 
 ## Building POSCARs
 
@@ -51,8 +54,8 @@ already in the dataset or already has a job folder.
 - The template is a relaxed Ir structure, so for other metals it is only a starting geometry; every new POSCAR
   must be fully relaxed.
 - The script swaps elements, regroups atoms by element for the POSCAR, keeps selective-dynamics flags,
-  and never overwrites an existing POSCAR. Generate POTCAR from the new POSCAR with VASPKIT so the element
-  order matches.
+  and never overwrites an existing POSCAR. Generate KPOINTS and POTCAR from the new POSCAR with
+  `echo -e "102\n1\n0.03" | vaspkit` so the element order matches, then check it against the POTCAR `TITEL` lines.
 
 ## Loop control
 

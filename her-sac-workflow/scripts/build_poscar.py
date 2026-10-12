@@ -68,6 +68,9 @@ def main():
         rows = [r for r in csv.DictReader(fh) if r.get("Z")]
     if a.only:
         rows = [r for r in rows if r["name"] in a.only]
+        missing = set(a.only) - {r["name"] for r in rows}
+        for name in sorted(missing):
+            print(f"NOT FOUND {name} (not in {a.candidates})")
     for r in rows:
         p = read_poscar(a.template)
         lig = [int(x) for x in r["ligands"].split()]

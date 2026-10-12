@@ -32,7 +32,8 @@ Make the frequency POSCAR from the relaxed CONTCAR with `python scripts/make_fre
 
 
 - Run a frequency job for every adsorbed state, with only the H atoms free and the slab fixed.
-- G = E_DFT + E_ZPE − TS, T = 298.15 K. The bare slab uses G_* = E_*.
+- G = E_DFT + E_ZPE − TS, T = 298.15 K (ZPE/TS via VASPKIT 501, E_DFT = OSZICAR `E0`; commands in
+  `references/vasp_settings.md`). The bare slab uses G_* = E_*.
 - G_H₂ for gas-phase H₂: use the project reference value in `references/vasp_settings.md`; never mix references
   from different setups.
 - Imaginary modes on H: report them; the structure may not be a minimum.
@@ -42,6 +43,8 @@ Make the frequency POSCAR from the relaxed CONTCAR with `python scripts/make_fre
 A job passes only if all hold:
 
 - Electronic SCF converged in every ionic step, and the final ionic step reached EDIFFG (forces < 0.01 eV/Å).
+  The job log must end with `reached required accuracy - stopping structural energy minimisation`
+  (last or second-to-last line).
 - No error messages in the output or scheduler log; the job finished normally.
 - H stayed bound: metal–H or ligand–H distance within a sensible bonding range; no H drifted into vacuum.
 - Final magnetic moment recorded; note large changes between `*`, `H*` and `2H*`.

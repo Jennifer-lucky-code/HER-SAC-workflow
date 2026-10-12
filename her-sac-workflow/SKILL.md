@@ -41,7 +41,8 @@ provides the log file.
 calculated.
 
 **4. Build inputs.** `python scripts/build_poscar.py candidates.csv --template assets/POSCAR_template --sites assets/sites.json --only <names>`
-(element substitution on the project template, see `references/screening.md`), then assemble INCAR, KPOINTS and POTCAR from `references/vasp_settings.md`. Job set per candidate: bare `*`,
+(element substitution on the project template, see `references/screening.md`), then copy the INCAR from `references/vasp_settings.md` and generate KPOINTS + POTCAR with
+`echo -e "102\n1\n0.03" | vaspkit` (check POSCAR/POTCAR element order). Job set per candidate: bare `*`,
 `H*` (metal and ligand sites), `2H*` in both Tafel configurations, frequency jobs. Relaxations fix no atoms;
 only frequency (ZPE/TS) jobs fix the substrate (`scripts/make_freq_poscar.py`). Details in `references/dft_her.md`.
 
