@@ -18,10 +18,10 @@ until then, ask the user rather than guessing.
 | Vacuum | 15 Å (user-stated; not yet written in the manuscript) |
 | Supercell size | TODO |
 | vdW correction | DFT-D3 (IVDW = 11, zero damping) |
-| Dipole correction (LDIPOL/IDIPOL) | TODO |
+| Dipole correction (LDIPOL/IDIPOL) | not used (not in the project INCAR) |
 | Initial MAGMOM | not set in template (VASP default 1 μB per atom); set explicitly if spin states matter |
 | POTCAR | generated with VASPKIT together with KPOINTS (its recommended PAW_PBE set; see KPOINTS below) |
-| Solvation (VASPsol) | TODO: used or not |
+| Solvation (VASPsol) | not used (not in the project INCAR) |
 
 ## Relaxation INCAR (project template)
 

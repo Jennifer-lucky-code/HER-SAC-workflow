@@ -51,8 +51,19 @@ A job passes only if all hold:
 - Structure integrity: TM still four-coordinated, no large out-of-plane distortion. Flag symmetry breaking
   (Jahn–Teller-like distortion) in the log rather than discarding the job.
 
-Failed jobs: diagnose from the error text, fix one setting at a time, resubmit. After 3 failed retries, stop and
-flag the job for the user. Log every action (what failed, what was changed) in `workflow_log.md`.
+Failed jobs are fixed automatically (no need to ask the user), found by the 5-hourly `scripts/check_jobs.py` run:
+
+1. Back up before changing anything: `log` → `log-N`, `INCAR` → `INCAR-N` (N = retry number).
+2. Apply the one fix the script names for the error (its table covers walltime, memory, POTCAR, MAGMOM,
+   ZBRENT, BRIONS, LREAL, symmetry, eigensolver, BRMIX, NBANDS, crashes). For a relaxation that had made
+   progress, `cp CONTCAR POSCAR` first so the restart keeps it.
+3. Never change anything that shifts the energy reference to make a job run: ENCUT, PREC, IVDW, ISPIN,
+   POTCAR set, k-spacing, cell. If the only fix would need that, flag the job instead.
+4. Resubmit, write the new JOBID, add the retry to `loop_state.json`.
+5. After 3 failed retries of the same job, stop and flag it for the user with the errors seen.
+
+Log every action (what failed, what was changed, new job ID) in `workflow_log.md`, and keep the changed
+setting in the dataset row's notes so it is clear which jobs deviate from the template INCAR.
 
 ## 7. Free energies, mechanism and overpotential
 

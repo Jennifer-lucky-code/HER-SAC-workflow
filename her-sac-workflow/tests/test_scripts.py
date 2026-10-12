@@ -6,6 +6,8 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 from her_analysis import analyse  # noqa: E402
 from parse_candidates import canonical, parse  # noqa: E402
+from check_jobs import check  # noqa: E402
+import tempfile  # noqa: E402
 
 
 class WorkedCheck(unittest.TestCase):
@@ -33,6 +35,38 @@ class Parse(unittest.TestCase):
         rows = parse("Top\n配置 1:\n  Z=44, 配体=[15, 8, 7, 16]  (PONS)\n")
         self.assertEqual(rows[0]["label_check"], "MISSING dG")
         self.assertEqual(rows[0]["canonical"], "Ru-NSPO@G")
+
+
+def job(files):
+    d = tempfile.mkdtemp()
+    for name, text in files.items():
+        with open(os.path.join(d, name), "w") as fh:
+            fh.write(text)
+    return d
+
+
+class CheckJobs(unittest.TestCase):
+    def test_converged(self):
+        d = job({"INCAR": "IBRION = 2\nNSW = 500\n",
+                 "log": "  1 F= -1\n reached required accuracy - stopping structural energy minimisation\n"})
+        self.assertEqual(check(d, use_scheduler=False)["status"], "converged")
+
+    def test_zbrent(self):
+        d = job({"INCAR": "IBRION = 2\nNSW = 500\n", "log": "ZBRENT: fatal error in bracketing\n"})
+        r = check(d, use_scheduler=False)
+        self.assertEqual((r["status"], r["error"]), ("failed", "zbrent"))
+
+    def test_nsw_reached(self):
+        d = job({"INCAR": "IBRION = 2\nNSW = 3\n", "log": "x\n",
+                 "OSZICAR": "DAV: 1\n   3 F= -.1E+03 E0= -.1E+03  d E =-.1E-02  mag=  1.0\n"})
+        r = check(d, use_scheduler=False)
+        self.assertEqual(r["status"], "unconverged")
+        self.assertIn("CONTCAR", r["fix"])
+
+    def test_frequency_done(self):
+        d = job({"INCAR": "IBRION = 5  # finite differences\nNSW = 1\n",
+                 "OUTCAR": " General timing and accounting informations for this job:\n"})
+        self.assertEqual(check(d, use_scheduler=False)["status"], "converged")
 
 
 if __name__ == "__main__":
